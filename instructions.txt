@@ -1,0 +1,7 @@
+LUI x1, 1024
+ADDI x2, x1, 50
+ADD x3, x1, x2
+BEQ x3, x2, 4
+JAL x4, 8
+SUB x5, x3, x2
+SLTI x6, x5, 1
