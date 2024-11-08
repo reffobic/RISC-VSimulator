@@ -1,63 +1,52 @@
-//
-//  UJType.h
-//  AssemblyProject1
-//
-//  Created by Mohamed El-Refai on 06/11/2024.
-//
-
-#ifndef UJType_h
-#define UJType_h
+#ifndef UJTYPE_H
+#define UJTYPE_H
 
 #include "instruction.h"
+#include "registers.h"
 #include <iostream>
 
 using namespace std;
 
 class UJType : public instruction {
-
 private:
-    int rd;        // Destination register
-    int imm19_12;  // Immediate bits 19-12
-    int imm11;     // Immediate bit 11
-    int imm10_1;   // Immediate bits 10-1
-    int imm20;     // Immediate bit 20 (most significant bit)
+    int rd;       // Destination register
+    int imm;      // 20-bit upper immediate value
 
 public:
     // Constructor to initialize all members, including inherited name and opCode
-    UJType(const string &name, int opCode, int rd, int imm19_12, int imm11, int imm10_1, int imm20)
-        : rd(rd), imm19_12(imm19_12), imm11(imm11), imm10_1(imm10_1), imm20(imm20) {
-            setName(name);     // Setting inherited member
-            setOpCode(opCode); // Setting inherited member
-    }
+    UJType(const string &name, int opCode, int rd, int imm)
+        : instruction(name, opCode), rd(rd), imm(imm) {}
 
-    // Method to assemble the immediate field
     int getImmediate() const {
-        // Combine immediate bits according to RISC-V UJ-type format
-        int imm = (imm20 << 20)      // imm[20]
-                | (imm19_12 << 12)   // imm[19:12]
-                | (imm11 << 11)      // imm[11]
-                | (imm10_1 << 1);    // imm[10:1]
+        int decodedImm = ((imm & 0xFF000) >> 12)    // Bits 19-12
+                       | ((imm & 0x80000) >> 9)     // Bit 11
+                       | ((imm & 0x7FE) << 1)       // Bits 10-1
+                       | ((imm & 0x1) << 20);       // Bit 20 (sign bit)
         
-        // Sign extend the 21-bit immediate to 32 bits
-        if (imm & (1 << 20)) {  // If the 21st bit is set
-            imm |= 0xFFE00000;  // Sign extend to 32 bits
+        // Sign extend if the 20th bit is set
+        if (decodedImm & (1 << 20)) {
+            decodedImm |= 0xFFE00000;  // Sign extend to 32 bits
         }
-        
-        return imm;
+        return decodedImm;
     }
 
-    // Getter for the destination register
-    int getRD() const {
-        return rd;
+    // Execution function specific to UJ-type instructions (e.g., JAL)
+    void execute(registers &registerFile, int &pc, int *memory) override {
+        if (getName() == "JAL") {
+            registerFile.set(rd, pc + 4);  // Save return address
+            pc = pc + getImmediate();      // Set pc to jump target
+            cout << "Executing JAL: x" << rd << " = " << (pc + 4) << ", PC = " << pc << endl;
+        } else {
+            cout << "Unknown UJ-Type Instruction with opcode = " << getOpCode() << endl;
+        }
     }
 
     // Display function for debugging or logging
-    void display() const {
+    void display() const override {
         cout << "UJ-Type Instruction - "
-        << "Name: " << getName() << ", Opcode: " << getOpCode()
-             << ", RD: " << rd
-             << ", Immediate (assembled): " << getImmediate() << endl;
+             << "Name: " << getName() << ", Opcode: " << getOpCode()
+             << ", RD: " << rd << ", Immediate: " << getImmediate() << endl;
     }
 };
 
-#endif /* UJType_h */
+#endif /* UJTYPE_H */
